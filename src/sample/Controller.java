@@ -9,13 +9,16 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import java.beans.Visibility;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class Controller {
     static Stage stage;
@@ -29,9 +32,9 @@ public class Controller {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                javafx.scene.control.TextField loginTF = (javafx.scene.control.TextField) scene.lookup("#username");
-                javafx.scene.control.TextField serverIP_TF = (javafx.scene.control.TextField) scene.lookup("#server_ip");
-                javafx.scene.control.TextField passwordTF = (javafx.scene.control.TextField) scene.lookup("#password");
+                javafx.scene.control.TextField loginTF = (javafx.scene.control.TextField) scene.lookup("#login_username");
+                javafx.scene.control.TextField serverIP_TF = (javafx.scene.control.TextField) scene.lookup("#login_server_ip");
+                javafx.scene.control.TextField passwordTF = (javafx.scene.control.TextField) scene.lookup("#login_password");
                 String serverIP = serverIP_TF.getText();
                 String login = loginTF.getText();
                 String password = passwordTF.getText();
@@ -70,15 +73,50 @@ public class Controller {
     }
 
     public void signUpOnClick() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Socket socket;
-                InetAddress inetAddress;
-                javafx.scene.control.TextField loginTF = (javafx.scene.control.TextField) scene.lookup("#username");
-                javafx.scene.control.TextField serverIP_TF = (javafx.scene.control.TextField) scene.lookup("#server_ip");
-                javafx.scene.control.TextField passwordTF = (javafx.scene.control.TextField) scene.lookup("#password");
-                javafx.scene.control.TextField confirmPasswordTF = (javafx.scene.control.TextField) scene.lookup("#password");
+        new Thread(() -> {
+            int port = 2170;
+            Socket socket;
+            InetAddress inetAddress;
+            TextField loginTF = (TextField) scene.lookup("#sign_up_username");
+            TextField serverIP_TF = (TextField) scene.lookup("#sign_up_server_ip");
+            TextField passwordTF = (TextField) scene.lookup("#sign_up_password");
+            TextField confirmPasswordTF = (TextField) scene.lookup("#sign_up_cpassword");
+            Text error = (Text) scene.lookup("#sign_up_error");
+            try {
+                inetAddress = InetAddress.getByName(serverIP_TF.getText());
+                socket = new Socket(inetAddress, port);
+                DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+                DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+                String signUpData = "r\n";
+                signUpData += loginTF.getText() + "\n";
+                if (!signUpData.contains(" ")) {
+                    String signUpPassword = passwordTF.getText();
+                    if (signUpPassword.length() > 3 && signUpPassword.length() < 33) {
+                        if (!signUpPassword.contains(" ")) {
+                            if (signUpPassword.equals(confirmPasswordTF.getText())) {
+                                signUpData += signUpPassword + "\n";
+                                dataOutputStream.writeUTF(signUpData);
+                                String answer = dataInputStream.readUTF();
+                                if (answer.equals("s-ok")) {
+                                    error.setText("Реєстрація пройшла успішно.");
+                                } else {
+                                    error.setText("Даний логін вже зайнято.");
+                                }
+                            } else {
+                                error.setText("Не співпадають паролі.");
+                            }
+                        } else {
+                            error.setText("Пароль не повинен містити пробіли.");
+                        }
+                    } else {
+                        error.setText("Неприпустима довжина паролю.");
+                    }
+                } else {
+                    error.setText("Логін не повинен містити пробіли.");
+                }
+            } catch (Exception e) {
+                error.setText("Сервер недоступний.");
+                e.printStackTrace();
             }
         }).start();
     }

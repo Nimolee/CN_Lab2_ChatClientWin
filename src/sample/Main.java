@@ -6,9 +6,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.awt.event.ActionEvent;
-import java.io.IOException;
-
 public class Main extends Application {
 
     Stage stage;
@@ -22,11 +19,6 @@ public class Main extends Application {
         stage.show();
         Controller.stage = stage;
         Controller.scene = stage.getScene();
-    }
-
-    public void OnLoginClick(ActionEvent e) throws IOException {
-        Parent root = FXMLLoader.load(getClass().getResource("Chat.fxml"));
-        stage.setScene(new Scene(root));
     }
 
     public static void main(String[] args) {
