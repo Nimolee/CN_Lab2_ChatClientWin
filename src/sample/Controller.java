@@ -24,13 +24,13 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.Vector;
 
+@SuppressWarnings("unchecked")
 public class Controller {
     static Stage stage;
     static Scene scene;
     private DataInputStream _DIS;
-    static DataOutputStream _DOS;
+    private static DataOutputStream _DOS;
 
     @FXML
     public void loginOnClick() {
@@ -80,13 +80,13 @@ public class Controller {
                                     observable.addListener((obs, wasSelected, isNowSelected) ->
                                             {
                                                 send_to.replace(item, !send_to.get(item));
-                                                String out = "t";
+                                                StringBuilder out = new StringBuilder("t");
                                                 for (int i = 0; i < listViewUser.getItems().size(); i++) {
                                                     if (send_to.get(listViewUser.getItems().get(i)))
-                                                        out += "\n" + listViewUser.getItems().get(i).toString().split("")[0];
+                                                        out.append("\n").append(listViewUser.getItems().get(i).toString().split("")[0]);
                                                 }
                                                 try {
-                                                    _DOS.writeUTF(out);
+                                                    _DOS.writeUTF(out.toString());
                                                 } catch (IOException e) {
                                                     e.printStackTrace();
                                                 }
