@@ -1,40 +1,48 @@
 package sample;
 
 import javafx.application.Platform;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 
-import java.beans.Visibility;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Vector;
 
 public class Controller {
     static Stage stage;
     static Scene scene;
-    DataInputStream _DIS;
-    DataOutputStream _DOS;
-
+    private DataInputStream _DIS;
+    static DataOutputStream _DOS;
 
     @FXML
     public void loginOnClick() {
         new Thread(new Runnable() {
+
+            HashMap<String, Boolean> send_to = new HashMap<>();
+
             @Override
             public void run() {
-                javafx.scene.control.TextField loginTF = (javafx.scene.control.TextField) scene.lookup("#login_username");
-                javafx.scene.control.TextField serverIP_TF = (javafx.scene.control.TextField) scene.lookup("#login_server_ip");
-                javafx.scene.control.TextField passwordTF = (javafx.scene.control.TextField) scene.lookup("#login_password");
+                TextField loginTF = (TextField) scene.lookup("#login_username");
+                TextField serverIP_TF = (TextField) scene.lookup("#login_server_ip");
+                PasswordField passwordTF = (PasswordField) scene.lookup("#login_password");
                 String serverIP = serverIP_TF.getText();
                 String login = loginTF.getText();
                 String password = passwordTF.getText();
@@ -62,7 +70,55 @@ public class Controller {
                         Parent root = FXMLLoader.load(getClass().getResource("Chat.fxml"));
                         scene = new Scene(root);
                         Platform.runLater(() -> stage.setScene(scene));
+                        new Thread(() -> {
+                            try {
+                                ObservableList<String> users;
+                                ListView listView = (ListView) scene.lookup("#ChatLV");
+                                ListView listViewUser = (ListView) scene.lookup("#selectUserLV");
+                                listViewUser.setCellFactory(CheckBoxListCell.forListView((Callback<String, ObservableValue<Boolean>>) item -> {
+                                    BooleanProperty observable = new SimpleBooleanProperty();
+                                    observable.addListener((obs, wasSelected, isNowSelected) ->
+                                            {
+                                                send_to.replace(item, !send_to.get(item));
+                                                String out = "t";
+                                                for (int i = 0; i < listViewUser.getItems().size(); i++) {
+                                                    if (send_to.get(listViewUser.getItems().get(i)))
+                                                        out += "\n" + listViewUser.getItems().get(i).toString().split("")[0];
+                                                }
+                                                try {
+                                                    _DOS.writeUTF(out);
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                                System.out.println("Check box for " + item + " changed from " + wasSelected + " to " + isNowSelected);
+                                            }
+                                    );
+                                    return observable;
+                                }));
+                                ObservableList<String> items = FXCollections.observableArrayList();
 
+                                while (true) {
+                                    final String msg = _DIS.readUTF();
+                                    switch (msg.split("\n")[0]) {
+                                        case "m":
+                                            items.add(msg.split("\n")[2] + "[" + msg.split("\n")[1] + "]:\n" + msg.split("\n")[3]);
+                                            listView.setItems(items);
+                                            break;
+                                        case "u":
+                                            users = FXCollections.observableArrayList();
+                                            send_to = new HashMap<>();
+                                            for (int i = 1; i < msg.split("\n").length; i++) {
+                                                users.add(msg.split("\n")[i]);
+                                                send_to.put(msg.split("\n")[i], false);
+                                            }
+                                            listViewUser.setItems(users);
+                                            break;
+                                    }
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }).start();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -70,6 +126,18 @@ public class Controller {
             }
         }).start();
 
+    }
+
+    public void sendMessageOnClick() {
+        new Thread(() -> {
+            try {
+                String msg = "m\n" + ((TextField) scene.lookup("#textTF")).getText();
+                _DOS.writeUTF(msg);
+                ((TextField) scene.lookup("#textTF")).setText("");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     public void signUpOnClick() {
